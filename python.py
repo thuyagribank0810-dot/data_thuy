@@ -183,3 +183,46 @@ if uploaded_file is not None:
 
 else:
     st.info("Vui lòng tải lên file Excel để bắt đầu phân tích.")
+    # --- Chức năng 6: Khung Chat với Gemini ---
+st.markdown("---")
+st.subheader("💬 Trò chuyện trực tiếp với Gemini")
+
+api_key = st.secrets.get("GEMINI_API_KEY")
+if not api_key:
+    st.error("⚠️ Không tìm thấy GEMINI_API_KEY trong Streamlit Secrets. Hãy cấu hình trước khi sử dụng chat.")
+else:
+    client = genai.Client(api_key=api_key)
+    model_name = "gemini-2.5-flash"
+
+    # Sử dụng session_state để lưu lịch sử chat
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Hiển thị lịch sử hội thoại
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # Ô nhập liệu chat
+    user_input = st.chat_input("Nhập câu hỏi của bạn (ví dụ: 'Phân tích ROE là gì?')")
+    if user_input:
+        # Hiển thị tin nhắn người dùng
+        st.chat_message("user").markdown(user_input)
+        st.session_state.messages.append({"role": "user", "content": user_input})
+
+        try:
+            # Gọi Gemini API để lấy phản hồi
+            with st.chat_message("assistant"):
+                with st.spinner("Gemini đang phản hồi..."):
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=user_input
+                    )
+                    reply = response.text
+                    st.markdown(reply)
+                    st.session_state.messages.append({"role": "assistant", "content": reply})
+
+        except APIError as e:
+            st.error(f"Lỗi khi gọi Gemini API: {e}")
+        except Exception as e:
+            st.error(f"Đã xảy ra lỗi: {e}")
