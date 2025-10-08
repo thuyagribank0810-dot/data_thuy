@@ -194,11 +194,19 @@ else:
     client = genai.Client(api_key=api_key)
     model_name = "gemini-2.5-flash"
 
-    # Sử dụng session_state để lưu lịch sử chat
+    # Nút kiểm tra khóa
+    if st.button("🧪 Kiểm tra API Key Gemini"):
+        try:
+            models = client.models.list()
+            st.success("✅ Khóa hợp lệ! Kết nối Gemini thành công.")
+        except Exception as e:
+            st.error(f"❌ Khóa không hợp lệ hoặc chưa kích hoạt dịch vụ: {e}")
+
+    # Lưu lịch sử chat
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Hiển thị lịch sử hội thoại
+    # Hiển thị lịch sử
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -206,22 +214,21 @@ else:
     # Ô nhập liệu chat
     user_input = st.chat_input("Nhập câu hỏi của bạn (ví dụ: 'Phân tích ROE là gì?')")
     if user_input:
-        # Hiển thị tin nhắn người dùng
         st.chat_message("user").markdown(user_input)
         st.session_state.messages.append({"role": "user", "content": user_input})
 
         try:
-            # Gọi Gemini API để lấy phản hồi
             with st.chat_message("assistant"):
                 with st.spinner("Gemini đang phản hồi..."):
                     response = client.models.generate_content(
                         model=model_name,
                         contents=user_input
                     )
-                    reply = response.text
+                    reply = getattr(response, "text", None)
+                    if not reply and hasattr(response, "candidates"):
+                        reply = response.candidates[0].content.parts[0].text
                     st.markdown(reply)
                     st.session_state.messages.append({"role": "assistant", "content": reply})
-
         except APIError as e:
             st.error(f"Lỗi khi gọi Gemini API: {e}")
         except Exception as e:
